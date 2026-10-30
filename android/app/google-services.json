@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "675996444240",
+    "project_id": "estacionamientoitiz",
+    "storage_bucket": "estacionamientoitiz.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:675996444240:android:40609d0f689ecc26229355",
+        "android_client_info": {
+          "package_name": "com.example.app_itiz"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBhYO5_x7rHVvLw2-i5MIEuZooc8tJaqsk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
