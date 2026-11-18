@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -16,11 +17,38 @@ class _RegisterPageState extends State<RegisterPage> {
   final _placasController = TextEditingController();
   
   String _rolSeleccionado = 'alumno';
-  bool _pagoActivo = false; 
+  bool _cargando = false; // Variable para el círculo de carga
 
-  void _registrarUsuario() {
+  // Función conectada a Supabase
+  Future<void> _registrarUsuario() async {
     if (_formKey.currentState!.validate()) {
-      // Lógica pendiente
+      setState(() => _cargando = true);
+
+      try {
+        // Guardamos en la tabla 'usuarios' de Supabase
+        await Supabase.instance.client.from('usuarios').insert({
+          'nombre': _nombreController.text.trim(),
+          'identificador': _identificadorController.text.trim(),
+          'password': _passwordController.text.trim(),
+          'rol': _rolSeleccionado,
+          'placas': _placasController.text.trim().toUpperCase(),
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('¡Usuario registrado con éxito!'), backgroundColor: Colors.green),
+          );
+          Navigator.pop(context); // Regresa al Login
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _cargando = false);
+      }
     }
   }
 
@@ -72,7 +100,11 @@ class _RegisterPageState extends State<RegisterPage> {
                   TextFormField(
                     controller: _identificadorController,
                     decoration: InputDecoration(
-                      labelText: _rolSeleccionado == 'alumno' ? 'Número de Control' : _rolSeleccionado == 'externo' ? 'Número de INE' : 'Número de Empleado',
+                      labelText: _rolSeleccionado == 'alumno' 
+                          ? 'Número de Control' 
+                          : _rolSeleccionado == 'externo' 
+                              ? 'Número de INE' 
+                              : 'Número de Empleado',
                       border: const OutlineInputBorder(),
                     ),
                     validator: (value) => value!.isEmpty ? 'Requerido' : null,
@@ -86,37 +118,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     validator: (value) => value!.length < 4 ? 'Mínimo 4 caracteres' : null,
                   ),
 
-                  // --- SECCIÓN DE PAGO (Solo Alumnos) ---
-                  if (_rolSeleccionado == 'alumno') ...[
-                    const SizedBox(height: 24),
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.amber.shade50,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.amber),
-                      ),
-                      child: Column(
-                        children: [
-                          const Row(
-                            children: [
-                              Icon(Icons.warning_amber_rounded, color: Colors.orange),
-                              SizedBox(width: 8),
-                              Text('Cuota de Estacionamiento', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          const Text('Como alumno, debes confirmar el pago de tu cuota semestral para poder registrar tu vehículo.'),
-                          CheckboxListTile(
-                            title: const Text('Confirmo que he pagado en caja'),
-                            value: _pagoActivo,
-                            activeColor: Colors.deepPurple,
-                            onChanged: (value) => setState(() => _pagoActivo = value!),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                  // NOTA: La sección de pago para alumnos fue eliminada.
 
                   const SizedBox(height: 24),
                   const Text('Datos del Vehículo', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
@@ -134,13 +136,15 @@ class _RegisterPageState extends State<RegisterPage> {
                     width: double.infinity,
                     height: 50,
                     child: ElevatedButton(
-                      onPressed: _registrarUsuario,
+                      onPressed: _cargando ? null : _registrarUsuario,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.deepPurple,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
-                      child: const Text('Registrar Usuario', style: TextStyle(fontSize: 18)),
+                      child: _cargando
+                          ? const CircularProgressIndicator(color: Colors.white)
+                          : const Text('Registrar Usuario', style: TextStyle(fontSize: 18)),
                     ),
                   ),
                 ],

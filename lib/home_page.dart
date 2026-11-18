@@ -1,82 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'login_page.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  final String nombre;
+  final String rol;
+  final String identificador;
+  final String placas;
+  final String usuarioId;
+
+  const HomePage({
+    super.key,
+    required this.nombre,
+    required this.rol,
+    required this.identificador,
+    required this.placas,
+    required this.usuarioId,
+  });
 
   @override
   State<HomePage> createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> {
-  // Variable para saber qué página mostrar (0 = Perfil, 1 = Historial)
   int _paginaSeleccionada = 0;
-
-  // Datos simulados (luego los traeremos de Supabase)
-  final String _nombreUsuario = 'Juan Pérez';
-  final String _rolUsuario = 'alumno';
-  final String _identificador = '241080496';
-  final String _placas = 'ABC-123-A';
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-<<<<<<< HEAD
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: const Text(
-          'Panel Principal',
-          style: TextStyle(
-            color: Colors.white, 
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        backgroundColor: const Color(0xFF7A1C31),
-        centerTitle: true,
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-          
-            const Icon(
-              Icons.local_parking, 
-              size: 100, 
-              color: Color(0xFF7A1C31),
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              'Bienvenido al Estacionamiento',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
-            ),
-            const SizedBox(height: 40),
-            ElevatedButton.icon(
-              onPressed: () {},
-              icon: const Icon(Icons.login),
-              label: const Text('Marcar Entrada'),
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size(200, 50),
-                backgroundColor: const Color(0xFF7A1C31), 
-                foregroundColor: Colors.white, 
-              ),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton.icon(
-              onPressed: () {},
-              icon: const Icon(Icons.logout),
-              label: const Text('Marcar Salida'),
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size(200, 50),
-                backgroundColor: const Color(0xFF4A4A4A),
-                foregroundColor: Colors.white,
-              ),
-=======
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
         title: Text(_paginaSeleccionada == 0 ? 'Mi Perfil' : 'Mi Historial'),
@@ -84,19 +36,18 @@ class _HomePageState extends State<HomePage> {
         foregroundColor: Colors.white,
       ),
       
-      // --- BARRA LATERAL (DRAWER) ---
       drawer: Drawer(
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
-            const UserAccountsDrawerHeader(
-              accountName: Text('Usuario ITIZ', style: TextStyle(fontWeight: FontWeight.bold)),
-              accountEmail: Text('Estacionamiento'),
-              currentAccountPicture: CircleAvatar(
+            UserAccountsDrawerHeader(
+              accountName: Text(widget.nombre, style: const TextStyle(fontWeight: FontWeight.bold)),
+              accountEmail: Text(widget.rol.toUpperCase()),
+              currentAccountPicture: const CircleAvatar(
                 backgroundColor: Colors.white,
                 child: Icon(Icons.person, size: 40, color: Colors.deepPurple),
               ),
-              decoration: BoxDecoration(color: Colors.deepPurple),
+              decoration: const BoxDecoration(color: Colors.deepPurple),
             ),
             ListTile(
               leading: const Icon(Icons.person, color: Colors.deepPurple),
@@ -104,7 +55,7 @@ class _HomePageState extends State<HomePage> {
               selected: _paginaSeleccionada == 0,
               onTap: () {
                 setState(() => _paginaSeleccionada = 0);
-                Navigator.pop(context); // Cierra el menú
+                Navigator.pop(context);
               },
             ),
             ListTile(
@@ -117,27 +68,21 @@ class _HomePageState extends State<HomePage> {
               },
             ),
             const Divider(),
-             ListTile(
+            ListTile(
               leading: const Icon(Icons.logout, color: Colors.red),
               title: const Text('Cerrar Sesión', style: TextStyle(color: Colors.red)),
               onTap: () {
-                // 1. Cerramos el menú lateral
                 Navigator.pop(context); 
-                
-                // 2. Reemplazamos la pantalla actual con el Login
                 Navigator.pushReplacement(
                   context, 
                   MaterialPageRoute(builder: (context) => const LoginPage()),
                 );
               },
->>>>>>> d7bdb0418bec1fc63d0fa81bc74ee27224b3afc9
             ),
           ],
         ),
       ),
 
-      // --- CUERPO DINÁMICO ---
-      // Aquí se decide si mostramos la vista de Perfil o de Historial
       body: _paginaSeleccionada == 0 ? _construirVistaPerfil() : _construirVistaHistorial(),
     );
   }
@@ -146,11 +91,10 @@ class _HomePageState extends State<HomePage> {
   // VISTA 1: PERFIL Y CÓDIGO QR
   // ==========================================
   Widget _construirVistaPerfil() {
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
         children: [
-          // Tarjeta del Perfil
           Card(
             elevation: 4,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -164,25 +108,24 @@ class _HomePageState extends State<HomePage> {
                     child: Icon(Icons.person, size: 60, color: Colors.white),
                   ),
                   const SizedBox(height: 12),
-                  Text(_nombreUsuario, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                  Text('Rol: ${_rolUsuario.toUpperCase()}', style: const TextStyle(color: Colors.grey, fontSize: 16)),
+                  Text(widget.nombre, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                  Text('Rol: ${widget.rol.toUpperCase()}', style: const TextStyle(color: Colors.grey, fontSize: 16)),
                   const Divider(height: 30),
                   
-                  // Datos breves
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Column(
                         children: [
                           const Text('Identificación', style: TextStyle(color: Colors.grey, fontSize: 12)),
-                          Text(_identificador, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                          Text(widget.identificador, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                         ],
                       ),
                       const SizedBox(width: 40),
                       Column(
                         children: [
                           const Text('Placas', style: TextStyle(color: Colors.grey, fontSize: 12)),
-                          Text(_placas, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                          Text(widget.placas, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                         ],
                       ),
                     ],
@@ -192,35 +135,63 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
           
+          const SizedBox(height: 20),
+
+          // --- BOTONES DE ENTRADA Y SALIDA ---
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () => _marcarRegistro('entrada'),
+                  icon: const Icon(Icons.login),
+                  label: const Text('Entrada'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () => _marcarRegistro('salida'),
+                  icon: const Icon(Icons.logout),
+                  label: const Text('Salida'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          
           const SizedBox(height: 24),
           
-          // Tarjeta del Código QR
-          Expanded(
-            child: Card(
-              elevation: 4,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              child: Padding(
-                padding: const EdgeInsets.all(20.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text('Código de Acceso Rápido', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 8),
-                    const Text('Muestra este código en la entrada', style: TextStyle(color: Colors.grey)),
-                    const SizedBox(height: 24),
-                    
-                    // Generador de QR
-                    QrImageView(
-                      data: '$_identificador-$_placas', // Datos que contiene el QR
-                      version: QrVersions.auto,
-                      size: 200.0,
-                      backgroundColor: Colors.white,
-                    ),
-                    
-                    const SizedBox(height: 24),
-                    const Text('Se regenera automáticamente cada 24 horas', style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic)),
-                  ],
-                ),
+          Card(
+            elevation: 4,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                children: [
+                  const Text('Código de Acceso Rápido', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  const Text('Muestra este código en la entrada', style: TextStyle(color: Colors.grey)),
+                  const SizedBox(height: 24),
+                  
+                  QrImageView(
+                    data: '${widget.identificador}-${widget.placas}',
+                    version: QrVersions.auto,
+                    size: 200.0,
+                    backgroundColor: Colors.white,
+                  ),
+                  
+                  const SizedBox(height: 24),
+                  const Text('Se regenera automáticamente cada 24 horas', style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic)),
+                ],
               ),
             ),
           ),
@@ -230,7 +201,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   // ==========================================
-  // VISTA 2: HISTORIAL Y DATOS COMPLETOS
+  // VISTA 2: HISTORIAL REAL DESDE SUPABASE
   // ==========================================
   Widget _construirVistaHistorial() {
     return Padding(
@@ -238,7 +209,6 @@ class _HomePageState extends State<HomePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Tarjeta de Datos Completos
           Card(
             elevation: 4,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -250,11 +220,10 @@ class _HomePageState extends State<HomePage> {
                   const Text('Información del Usuario', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   const Divider(),
                   const SizedBox(height: 10),
-                  _filaDato('Nombre:', _nombreUsuario),
-                  _filaDato('Identificador:', _identificador),
-                  _filaDato('Rol:', _rolUsuario.toUpperCase()),
-                  _filaDato('Vehículo:', 'Nissan Versa (Rojo)'), // Simulado
-                  _filaDato('Placas:', _placas),
+                  _filaDato('Nombre:', widget.nombre),
+                  _filaDato('Identificador:', widget.identificador),
+                  _filaDato('Rol:', widget.rol.toUpperCase()),
+                  _filaDato('Placas:', widget.placas),
                 ],
               ),
             ),
@@ -262,33 +231,60 @@ class _HomePageState extends State<HomePage> {
           
           const SizedBox(height: 16),
 
-          // Lista de Registros
           const Text('Historial de Entradas y Salidas', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
+          
+          // Usamos FutureBuilder para consultar Supabase
           Expanded(
-            child: Card(
-              elevation: 4,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              child: ListView.separated(
-                padding: const EdgeInsets.all(8),
-                itemCount: 4, // Simulamos 4 registros
-                separatorBuilder: (context, index) => const Divider(),
-                itemBuilder: (context, index) {
-                  // Datos simulados para la lista
-                  bool esEntrada = index % 2 == 0;
-                  return ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: esEntrada ? Colors.green.shade100 : Colors.red.shade100,
-                      child: Icon(
-                        esEntrada ? Icons.login : Icons.logout,
-                        color: esEntrada ? Colors.green : Colors.red,
-                      ),
-                    ),
-                    title: Text(esEntrada ? 'Entrada' : 'Salida', style: const TextStyle(fontWeight: FontWeight.bold)),
-                    subtitle: Text('Hoy, ${10 - index}:30 AM'),
-                  );
-                },
-              ),
+            child: FutureBuilder<List<Map<String, dynamic>>>(
+              future: Supabase.instance.client
+                  .from('registros')
+                  .select()
+                  .eq('usuario_id', widget.usuarioId)
+                  .order('fecha', ascending: false), // El más reciente primero
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  return Center(child: Text('Error: ${snapshot.error}'));
+                }
+                
+                final registros = snapshot.data ?? [];
+                if (registros.isEmpty) {
+                  return const Center(child: Text('No hay registros aún.'));
+                }
+
+                return Card(
+                  elevation: 4,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  child: ListView.separated(
+                    padding: const EdgeInsets.all(8),
+                    itemCount: registros.length,
+                    separatorBuilder: (context, index) => const Divider(),
+                    itemBuilder: (context, index) {
+                      final reg = registros[index];
+                      bool esEntrada = reg['tipo'] == 'entrada';
+                      
+                      // Formatear la fecha (viene en formato ISO de Supabase)
+                      DateTime fecha = DateTime.parse(reg['fecha']).toLocal();
+                      String fechaStr = "${fecha.day}/${fecha.month}/${fecha.year} ${fecha.hour}:${fecha.minute.toString().padLeft(2, '0')}";
+
+                      return ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: esEntrada ? Colors.green.shade100 : Colors.red.shade100,
+                          child: Icon(
+                            esEntrada ? Icons.login : Icons.logout,
+                            color: esEntrada ? Colors.green : Colors.red,
+                          ),
+                        ),
+                        title: Text(esEntrada ? 'Entrada' : 'Salida', style: const TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: Text(fechaStr),
+                      );
+                    },
+                  ),
+                );
+              },
             ),
           ),
         ],
@@ -296,7 +292,71 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // Widget de ayuda para crear las filas de datos
+  // Función para guardar entrada/salida en Supabase
+  // Función para guardar entrada/salida en Supabase con validación
+  Future<void> _marcarRegistro(String tipo) async {
+    try {
+      // 1. Consultamos el último registro del usuario
+      final ultimoRegistro = await Supabase.instance.client
+          .from('registros')
+          .select('tipo')
+          .eq('usuario_id', widget.usuarioId)
+          .order('fecha', ascending: false) // El más reciente primero
+          .limit(1)
+          .maybeSingle();
+
+      // 2. Lógica de validación
+      if (ultimoRegistro != null) {
+        if (ultimoRegistro['tipo'] == tipo) {
+          // Si el último fue 'entrada' y quiere marcar 'entrada', o viceversa
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Error: Ya tienes una $tipo registrada. Debes marcar la ${tipo == 'entrada' ? 'salida' : 'entrada'} primero.'), 
+                backgroundColor: Colors.orange,
+              ),
+            );
+          }
+          return; // Detenemos la ejecución aquí
+        }
+      } else {
+        // Si no hay registros previos y quiere marcar 'salida', lo bloqueamos
+        if (tipo == 'salida') {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Error: No puedes marcar salida sin haber entrado primero.'), 
+                backgroundColor: Colors.orange,
+              ),
+            );
+          }
+          return;
+        }
+      }
+
+      // 3. Si pasó las validaciones, guardamos el nuevo registro
+      await Supabase.instance.client.from('registros').insert({
+        'usuario_id': widget.usuarioId,
+        'tipo': tipo,
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('¡$tipo registrada con éxito!'), 
+            backgroundColor: tipo == 'entrada' ? Colors.green : Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error de conexión: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
   Widget _filaDato(String titulo, String valor) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),

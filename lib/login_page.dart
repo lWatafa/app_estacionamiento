@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'register_page.dart';
 import 'home_page.dart';
 
@@ -12,16 +13,87 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final _userController = TextEditingController();
   final _passwordController = TextEditingController();
+  bool _isLoading = false; // Para mostrar el círculo de carga
+
+  Future<void> _login() async {
+    FocusScope.of(context).unfocus();
+
+    String usuario = _userController.text.trim();
+    String password = _passwordController.text.trim();
+
+    if (usuario.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Llena todos los campos'), backgroundColor: Colors.orange),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      // 1. Buscamos al usuario en Supabase
+      final response = await Supabase.instance.client
+          .from('usuarios')
+          .select()
+          .eq('identificador', usuario)
+          .maybeSingle();
+
+      if (response != null) {
+        // 2. Validamos contraseña
+        if (response['password'] == password) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('¡Bienvenido ${response['nombre']}!'), backgroundColor: Colors.green),
+            );
+            
+            // 3. Pasamos los datos reales al HomePage
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => HomePage(
+                  nombre: response['nombre'],
+                  rol: response['rol'],
+                  identificador: response['identificador'],
+                  placas: response['placas'],
+                  usuarioId: response['id'],
+                ),
+              ),
+            );
+          }
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Contraseña incorrecta'), backgroundColor: Colors.red),
+            );
+          }
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Usuario no encontrado'), backgroundColor: Colors.red),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[100], // Fondo gris claro
+      backgroundColor: Colors.grey[100],
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
           child: Card(
-            elevation: 8, // Sombra de la tarjeta
+            elevation: 8,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             child: Padding(
               padding: const EdgeInsets.all(32.0),
@@ -58,18 +130,19 @@ class _LoginPageState extends State<LoginPage> {
                   const SizedBox(height: 32),
                   
                   SizedBox(
-                    width: double.infinity, // Botón ancho
+                    width: double.infinity,
                     height: 50,
                     child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.push(context, MaterialPageRoute(builder: (context) => const HomePage()));
-                      },
+                      // Aquí llamamos a la función _login
+                      onPressed: _isLoading ? null : _login,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color.fromARGB(255, 19, 41, 243),
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
-                      child: const Text('Ingresar', style: TextStyle(fontSize: 18)),
+                      child: _isLoading
+                          ? const CircularProgressIndicator(color: Colors.white)
+                          : const Text('Ingresar', style: TextStyle(fontSize: 18)),
                     ),
                   ),
                   const SizedBox(height: 16),
