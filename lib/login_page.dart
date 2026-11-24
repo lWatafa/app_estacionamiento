@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'register_page.dart';
 import 'home_page.dart';
-
+import 'admin_page.dart'; // <-- IMPORTANTE: Importamos el nuevo panel de admin
+import 'guardia_page.dart'; // <-- IMPORTANTE: Importamos el nuevo panel de guardia
+import 'register_externo_page.dart';
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -46,19 +48,40 @@ class _LoginPageState extends State<LoginPage> {
               SnackBar(content: Text('¡Bienvenido ${response['nombre']}!'), backgroundColor: Colors.green),
             );
             
-            // 3. Pasamos los datos reales al HomePage
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => HomePage(
-                  nombre: response['nombre'],
-                  rol: response['rol'],
-                  identificador: response['identificador'],
-                  placas: response['placas'],
-                  usuarioId: response['id'],
+            // 3. Verificamos el rol para redirigir al panel correcto
+            if (response['rol'] == 'admin') {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => AdminPage(
+                      adminNombre: response['nombre'],
+                      adminIdentificador: response['identificador'],
+                      adminPlacas: response['placas'] ?? 'ADMIN-01',
+                    ),
+                  ), 
+                );
+              } else if (response['rol'] == 'guardia') { // <-- NUEVO BLOQUE
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => GuardiaPage(guardiaNombre: response['nombre']),
+                  ),
+                );
+              }else {
+              // Si es estudiante, docente, empleado o externo, va al HomePage normal
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => HomePage(
+                    nombre: response['nombre'],
+                    rol: response['rol'],
+                    identificador: response['identificador'],
+                    placas: response['placas'] ?? 'Sin placas',
+                    usuarioId: response['id'],
+                  ),
                 ),
-              ),
-            );
+              );
+            }
           }
         } else {
           if (mounted) {
@@ -133,7 +156,6 @@ class _LoginPageState extends State<LoginPage> {
                     width: double.infinity,
                     height: 50,
                     child: ElevatedButton(
-                      // Aquí llamamos a la función _login
                       onPressed: _isLoading ? null : _login,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color.fromARGB(255, 19, 41, 243),
@@ -145,14 +167,21 @@ class _LoginPageState extends State<LoginPage> {
                           : const Text('Ingresar', style: TextStyle(fontSize: 18)),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                    const SizedBox(height: 16),
                   
+                  // Único botón de registro para gente del exterior
                   TextButton(
                     onPressed: () {
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => const RegisterPage()));
+                      Navigator.push(
+                        context, 
+                        MaterialPageRoute(builder: (context) => const RegisterExternoPage())
+                      );
                     },
-                    child: const Text('¿No tienes cuenta? Regístrate aquí'),
-                  )
+                    child: const Text(
+                      'Soy Visitante / Gente del Exterior', 
+                      style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold)
+                    ),
+                  ),
                 ],
               ),
             ),

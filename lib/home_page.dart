@@ -26,6 +26,66 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int _paginaSeleccionada = 0;
 
+  // --- FUNCIÓN PARA MARCAR ENTRADA O SALIDA ---
+  Future<void> _marcarAcceso(String tipo) async {
+    try {
+      // 1. Verificamos cuál fue el último movimiento para evitar dobles registros
+      final ultimoReg = await Supabase.instance.client
+          .from('registros')
+          .select('tipo')
+          .eq('usuario_id', widget.usuarioId)
+          .order('fecha', ascending: false)
+          .limit(1)
+          .maybeSingle();
+
+      if (ultimoReg != null && ultimoReg['tipo'] == tipo) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error: Ya tienes una $tipo registrada. Debes marcar la ${tipo == 'entrada' ? 'salida' : 'entrada'} primero.'), 
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        return;
+      }
+
+      if (ultimoReg == null && tipo == 'salida') {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Error: No puedes salir sin haber entrado.'), backgroundColor: Colors.orange),
+          );
+        }
+        return;
+      }
+
+      // 2. Guardamos el registro en Supabase
+      await Supabase.instance.client.from('registros').insert({
+        'usuario_id': widget.usuarioId,
+        'tipo': tipo,
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('¡$tipo registrada con éxito!'), 
+            backgroundColor: tipo == 'entrada' ? Colors.green : Colors.red,
+          ),
+        );
+        // Refrescamos la pantalla para que el historial se actualice
+        setState(() {
+          _paginaSeleccionada = 1; 
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -35,7 +95,6 @@ class _HomePageState extends State<HomePage> {
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
       ),
-      
       drawer: Drawer(
         child: ListView(
           padding: EdgeInsets.zero,
@@ -51,7 +110,7 @@ class _HomePageState extends State<HomePage> {
             ),
             ListTile(
               leading: const Icon(Icons.person, color: Colors.deepPurple),
-              title: const Text('Inicio / Mi QR'),
+              title: const Text('Mi Perfil y QR'),
               selected: _paginaSeleccionada == 0,
               onTap: () {
                 setState(() => _paginaSeleccionada = 0);
@@ -60,7 +119,7 @@ class _HomePageState extends State<HomePage> {
             ),
             ListTile(
               leading: const Icon(Icons.history, color: Colors.deepPurple),
-              title: const Text('Historial de Accesos'),
+              title: const Text('Mi Historial'),
               selected: _paginaSeleccionada == 1,
               onTap: () {
                 setState(() => _paginaSeleccionada = 1);
@@ -73,24 +132,59 @@ class _HomePageState extends State<HomePage> {
               title: const Text('Cerrar Sesión', style: TextStyle(color: Colors.red)),
               onTap: () {
                 Navigator.pop(context); 
-                Navigator.pushReplacement(
-                  context, 
-                  MaterialPageRoute(builder: (context) => const LoginPage()),
-                );
+                Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const LoginPage()));
               },
             ),
           ],
         ),
       ),
-
       body: _paginaSeleccionada == 0 ? _construirVistaPerfil() : _construirVistaHistorial(),
     );
   }
 
   // ==========================================
-  // VISTA 1: PERFIL Y CÓDIGO QR
+  // VISTA 1: PERFIL (Depende del Rol)
   // ==========================================
   Widget _construirVistaPerfil() {
+    // 1. SI ES EXTERNO: Mostrar solo su Pase de Visitante (sin botones)
+    if (widget.rol == 'externo') {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Card(
+            elevation: 8,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            child: Padding(
+              padding: const EdgeInsets.all(32.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.badge, size: 80, color: Colors.orange),
+                  const SizedBox(height: 16),
+                  const Text('Pase de Visitante', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  Text(widget.nombre, style: const TextStyle(fontSize: 18, color: Colors.grey)),
+                  const Divider(height: 40),
+                  QrImageView(
+                    data: '${widget.identificador}-${widget.placas}',
+                    version: QrVersions.auto,
+                    size: 220.0,
+                  ),
+                  const SizedBox(height: 24),
+                  const Text(
+                    'Muestra este código al guardia para registrar tu entrada o salida.', 
+                    textAlign: TextAlign.center, 
+                    style: TextStyle(color: Colors.grey)
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    // 2. SI NO ES EXTERNO (Estudiantes, docentes, admins): Mostrar vista normal
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -142,7 +236,7 @@ class _HomePageState extends State<HomePage> {
             children: [
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: () => _marcarRegistro('entrada'),
+                  onPressed: () => _marcarAcceso('entrada'),
                   icon: const Icon(Icons.login),
                   label: const Text('Entrada'),
                   style: ElevatedButton.styleFrom(
@@ -155,7 +249,7 @@ class _HomePageState extends State<HomePage> {
               const SizedBox(width: 16),
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: () => _marcarRegistro('salida'),
+                  onPressed: () => _marcarAcceso('salida'),
                   icon: const Icon(Icons.logout),
                   label: const Text('Salida'),
                   style: ElevatedButton.styleFrom(
@@ -170,6 +264,7 @@ class _HomePageState extends State<HomePage> {
           
           const SizedBox(height: 24),
           
+          // Tarjeta del Código QR
           Card(
             elevation: 4,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -179,7 +274,7 @@ class _HomePageState extends State<HomePage> {
                 children: [
                   const Text('Código de Acceso Rápido', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
-                  const Text('Muestra este código en la entrada', style: TextStyle(color: Colors.grey)),
+                  const Text('Muestra este código al guardia', style: TextStyle(color: Colors.grey)),
                   const SizedBox(height: 24),
                   
                   QrImageView(
@@ -188,9 +283,6 @@ class _HomePageState extends State<HomePage> {
                     size: 200.0,
                     backgroundColor: Colors.white,
                   ),
-                  
-                  const SizedBox(height: 24),
-                  const Text('Se regenera automáticamente cada 24 horas', style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic)),
                 ],
               ),
             ),
@@ -201,7 +293,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   // ==========================================
-  // VISTA 2: HISTORIAL REAL DESDE SUPABASE
+  // VISTA 2: HISTORIAL DEL USUARIO
   // ==========================================
   Widget _construirVistaHistorial() {
     return Padding(
@@ -209,68 +301,35 @@ class _HomePageState extends State<HomePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Card(
-            elevation: 4,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            child: Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Información del Usuario', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  const Divider(),
-                  const SizedBox(height: 10),
-                  _filaDato('Nombre:', widget.nombre),
-                  _filaDato('Identificador:', widget.identificador),
-                  _filaDato('Rol:', widget.rol.toUpperCase()),
-                  _filaDato('Placas:', widget.placas),
-                ],
-              ),
-            ),
-          ),
-          
-          const SizedBox(height: 16),
-
-          const Text('Historial de Entradas y Salidas', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const Text('Mi Historial de Accesos', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           
-          // Usamos FutureBuilder para consultar Supabase
           Expanded(
             child: FutureBuilder<List<Map<String, dynamic>>>(
               future: Supabase.instance.client
                   .from('registros')
                   .select()
                   .eq('usuario_id', widget.usuarioId)
-                  .order('fecha', ascending: false), // El más reciente primero
+                  .order('fecha', ascending: false),
               builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (snapshot.hasError) {
-                  return Center(child: Text('Error: ${snapshot.error}'));
-                }
+                if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+                if (snapshot.hasError) return Center(child: Text('Error: ${snapshot.error}'));
                 
                 final registros = snapshot.data ?? [];
-                if (registros.isEmpty) {
-                  return const Center(child: Text('No hay registros aún.'));
-                }
+                if (registros.isEmpty) return const Center(child: Text('No tienes registros aún.'));
 
-                return Card(
-                  elevation: 4,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  child: ListView.separated(
-                    padding: const EdgeInsets.all(8),
-                    itemCount: registros.length,
-                    separatorBuilder: (context, index) => const Divider(),
-                    itemBuilder: (context, index) {
-                      final reg = registros[index];
-                      bool esEntrada = reg['tipo'] == 'entrada';
-                      
-                      // Formatear la fecha (viene en formato ISO de Supabase)
-                      DateTime fecha = DateTime.parse(reg['fecha']).toLocal();
-                      String fechaStr = "${fecha.day}/${fecha.month}/${fecha.year} ${fecha.hour}:${fecha.minute.toString().padLeft(2, '0')}";
+                return ListView.builder(
+                  itemCount: registros.length,
+                  itemBuilder: (context, index) {
+                    final reg = registros[index];
+                    bool esEntrada = reg['tipo'] == 'entrada';
+                    
+                    DateTime fecha = DateTime.parse(reg['fecha']).toLocal();
+                    String fechaStr = "${fecha.day}/${fecha.month}/${fecha.year} ${fecha.hour}:${fecha.minute.toString().padLeft(2, '0')}";
 
-                      return ListTile(
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      child: ListTile(
                         leading: CircleAvatar(
                           backgroundColor: esEntrada ? Colors.green.shade100 : Colors.red.shade100,
                           child: Icon(
@@ -280,91 +339,13 @@ class _HomePageState extends State<HomePage> {
                         ),
                         title: Text(esEntrada ? 'Entrada' : 'Salida', style: const TextStyle(fontWeight: FontWeight.bold)),
                         subtitle: Text(fechaStr),
-                      );
-                    },
-                  ),
+                      ),
+                    );
+                  },
                 );
               },
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  // Función para guardar entrada/salida en Supabase
-  // Función para guardar entrada/salida en Supabase con validación
-  Future<void> _marcarRegistro(String tipo) async {
-    try {
-      // 1. Consultamos el último registro del usuario
-      final ultimoRegistro = await Supabase.instance.client
-          .from('registros')
-          .select('tipo')
-          .eq('usuario_id', widget.usuarioId)
-          .order('fecha', ascending: false) // El más reciente primero
-          .limit(1)
-          .maybeSingle();
-
-      // 2. Lógica de validación
-      if (ultimoRegistro != null) {
-        if (ultimoRegistro['tipo'] == tipo) {
-          // Si el último fue 'entrada' y quiere marcar 'entrada', o viceversa
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Error: Ya tienes una $tipo registrada. Debes marcar la ${tipo == 'entrada' ? 'salida' : 'entrada'} primero.'), 
-                backgroundColor: Colors.orange,
-              ),
-            );
-          }
-          return; // Detenemos la ejecución aquí
-        }
-      } else {
-        // Si no hay registros previos y quiere marcar 'salida', lo bloqueamos
-        if (tipo == 'salida') {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Error: No puedes marcar salida sin haber entrado primero.'), 
-                backgroundColor: Colors.orange,
-              ),
-            );
-          }
-          return;
-        }
-      }
-
-      // 3. Si pasó las validaciones, guardamos el nuevo registro
-      await Supabase.instance.client.from('registros').insert({
-        'usuario_id': widget.usuarioId,
-        'tipo': tipo,
-      });
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('¡$tipo registrada con éxito!'), 
-            backgroundColor: tipo == 'entrada' ? Colors.green : Colors.red,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error de conexión: $e'), backgroundColor: Colors.red),
-        );
-      }
-    }
-  }
-
-  Widget _filaDato(String titulo, String valor) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(titulo, style: const TextStyle(color: Colors.grey)),
-          Text(valor, style: const TextStyle(fontWeight: FontWeight.w600)),
         ],
       ),
     );
